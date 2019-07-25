@@ -15,13 +15,16 @@ if(NOT hasParent)
 endif ()
 
 SET_MIN_VERSIONS()
-set(LibName 
+set(LibName tiny_dds)
+
 project(${LibName})
 
 set(Interface
+		tinydds.h
 		)
 
 set(Src
+		tinydds.c
 		)
 
 set(Deps
