@@ -1388,7 +1388,7 @@ bool TinyDDS_NeedsEndianCorrecting(TinyDDS_ContextHandle handle) {
 	return false;
 }
 
-uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
+uint32_t TinyDDS_FaceSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 	TinyDDS_Context *ctx = (TinyDDS_Context *) handle;
 	if (ctx == NULL)
 		return 0;
@@ -1401,28 +1401,38 @@ uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 	uint32_t h = TinyDDS_MipMapReduce(ctx->header.height, mipmaplevel);
 	uint32_t d = TinyDDS_MipMapReduce(ctx->header.depth, mipmaplevel);
 	uint32_t s = ctx->headerDx10.arraySize ? ctx->headerDx10.arraySize : 1;
-	if(ctx->header.caps2 & TINYDDS_DDSCAPS2_CUBEMAP) {
-		s = 6;
+
+	if(d > 1 && s > 1) {
+		ctx->callbacks.error(ctx->user, "Volume textures can't have array slices or be cubemap");
+		return 0;
 	}
 
-	uint32_t pitch = ctx->header.pitchOrLinearSize >> (mipmaplevel * 2);
 	if (TinyDDS_IsCompressed(ctx->format)) {
-		if(pitch != 0) return pitch * s;
-
-		if(w < 4 || h < 4) {
-			ctx->callbacks.error(ctx->user, "Compressed formats can't be less the 4x4 pixels");
-			return 0;
-		}
-
-		w = w / 4;
-		h = h / 4;
+		// padd to block boundaries
+		w = (w + 3) / 4;
+		h = (h + 3) / 4;
 	}
 
 	uint32_t const formatSize = TinyDDS_FormatSize(ctx->format);
-	if(pitch == 0) {
-   		pitch = w * formatSize;
+	return w * h * d * s * formatSize;
+}
+
+uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
+	TinyDDS_Context *ctx = (TinyDDS_Context *) handle;
+	if (ctx == NULL)
+		return 0;
+
+	if (!ctx->headerValid) {
+		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		return 0;
 	}
-	return pitch * h * d * s;
+
+	if(	ctx->header.caps2 & TINYDDS_DDSCAPS2_CUBEMAP ||
+			ctx->headerDx10.miscFlag & TINYDDS_D3D10_RESOURCE_MISC_TEXTURECUBE ) {
+		return TinyDDS_FaceSize(handle, mipmaplevel) * 6;
+	} else {
+		return TinyDDS_FaceSize(handle, mipmaplevel);
+	}
 }
 
 void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
@@ -1448,6 +1458,60 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 	if (ctx->mipmaps[mipmaplevel] != NULL)
 		return ctx->mipmaps[mipmaplevel];
 
+	if(	ctx->header.caps2 & TINYDDS_DDSCAPS2_CUBEMAP ||
+			ctx->headerDx10.miscFlag & TINYDDS_D3D10_RESOURCE_MISC_TEXTURECUBE ) {
+
+		uint64_t offset = 0;
+		for(uint32_t i=0;i < mipmaplevel;++i) {
+			offset += TinyDDS_FaceSize(handle, i);
+		}
+
+		// at least one cubemap generater has mipMapCount wrong which causes
+		// image artifacts :(
+		uint64_t nextFaceOffset = 0;
+		for(uint32_t i = 0;i < ctx->header.mipMapCount + 1;++i) {
+			nextFaceOffset += TinyDDS_FaceSize(handle, i);
+		}
+
+		size_t const faceSize = TinyDDS_FaceSize(handle, mipmaplevel);
+		ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.alloc(ctx->user, faceSize * 6);
+		if(!ctx->mipmaps[mipmaplevel]) return NULL;
+
+		uint8_t *dstPtr = (uint8_t*)ctx->mipmaps[mipmaplevel];
+/*		for (uint32_t i = 0u;i < 6;++i) {
+			for (uint32_t j = 0u; j < faceSize / 4; ++j) {
+				switch(i) {
+				case 0: *(uint32_t *) (dstPtr + (j * 4)) = 0xDCDCDCDC;
+					break;
+				case 1: *(uint32_t *) (dstPtr + (j * 4)) = 0x00FF00DC;
+					break;
+				case 2: *(uint32_t *) (dstPtr + (j * 4)) = 0x000000FF;
+					break;
+				case 3: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC000000;
+					break;
+				case 4: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC00DC00;
+					break;
+				case 5: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC0000DC;
+					break;
+				}
+			}
+			dstPtr += faceSize;
+		}
+*/
+		dstPtr = (uint8_t*)ctx->mipmaps[mipmaplevel];
+		for (uint32_t i = 0u;i < 6;++i) {
+			ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
+			size_t read = ctx->callbacks.read(ctx->user, (void *) dstPtr, faceSize);
+			if(read != faceSize) {
+				ctx->callbacks.free(ctx->user, &ctx->mipmaps[mipmaplevel]);
+				return NULL;
+			}
+			dstPtr += faceSize;
+			offset += nextFaceOffset;
+		}
+		return ctx->mipmaps[mipmaplevel];
+	}
+
 	uint64_t offset = 0;
 	for(uint32_t i=0;i < mipmaplevel;++i) {
 		offset += TinyDDS_ImageSize(handle, i);
@@ -1460,15 +1524,16 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 	ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
 
 	ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.alloc(ctx->user, size);
-	if (ctx->mipmaps[mipmaplevel]) {
-		size_t read = ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
-		if(read != size) {
-			return NULL;
-		}
+	if (!ctx->mipmaps[mipmaplevel]) return NULL;
+	size_t read = ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
+	if(read != size) {
+		ctx->callbacks.free(ctx->user, &ctx->mipmaps[mipmaplevel]);
+		return NULL;
 	}
 
 	return ctx->mipmaps[mipmaplevel];
 }
+
 TinyDDS_Format TinyDDS_GetFormat(TinyDDS_ContextHandle handle) {
 	TinyDDS_Context *ctx = (TinyDDS_Context *) handle;
 	if (ctx == NULL)
