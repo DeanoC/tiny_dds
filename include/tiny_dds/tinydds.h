@@ -220,6 +220,7 @@ typedef enum TinyDDS_Format {
 	TDDS_R5G5B5A1_UNORM = TIF_DXGI_FORMAT_B5G5R5A1_UNORM,
 	TDDS_R8_UNORM = TIF_DXGI_FORMAT_R8_UNORM,
 	TDDS_R8_SNORM = TIF_DXGI_FORMAT_R8_SNORM,
+	TDDS_A8_UNORM = TIF_DXGI_FORMAT_A8_UNORM,
 	TDDS_R8_UINT = TIF_DXGI_FORMAT_R8_UINT,
 	TDDS_R8_SINT = TIF_DXGI_FORMAT_R8_SINT,
 	TDDS_R8G8_UNORM = TIF_DXGI_FORMAT_R8G8_UNORM,
@@ -382,6 +383,7 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_R8_UINT: return TinyImageFormat_R8_UINT;
 	case TDDS_R8_SNORM: return TinyImageFormat_R8_SNORM;
 	case TDDS_R8_SINT: return TinyImageFormat_R8_SINT;
+	case TDDS_A8_UNORM: return TinyImageFormat_A8_UNORM;
 	case TDDS_BC1_RGB_UNORM_BLOCK: return TinyImageFormat_BC1_RGB_UNORM_BLOCK;
 	case TDDS_BC1_RGBA_UNORM_BLOCK: return TinyImageFormat_BC1_RGBA_UNORM_BLOCK;
 	case TDDS_BC2_UNORM_BLOCK: return TinyImageFormat_BC2_UNORM_BLOCK;
@@ -455,6 +457,7 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 	case TinyImageFormat_R8_SNORM: 				return TDDS_R8_SNORM;
 	case TinyImageFormat_R8_UINT: 				return TDDS_R8_UINT;
 	case TinyImageFormat_R8_SINT: 				return TDDS_R8_SINT;
+	case TinyImageFormat_A8_UNORM: 				return TDDS_A8_UNORM;
 
 	case TinyImageFormat_R8G8_UNORM: 			return TDDS_R8G8_UNORM;
 	case TinyImageFormat_R8G8_SNORM: 			return TDDS_R8G8_SNORM;
@@ -901,6 +904,7 @@ static uint32_t TinyDDS_FormatSize(TinyDDS_Format fmt) {
 	case TDDS_R8_SNORM:
 	case TDDS_R8_UINT:
 	case TDDS_R8_SINT:
+	case TDDS_A8_UNORM:
 	case TDDS_R4G4_UNORM:
 	case TDDS_R8_SRGB:
 		return 1;
@@ -1040,13 +1044,13 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		case TINYDDS_D3DFMT_A1R5G5B5: return TDDS_A1R5G5B5_UNORM;
 		case TINYDDS_D3DFMT_A4R4G4B4: return TDDS_A4R4G4B4_UNORM;
 		case TINYDDS_D3DFMT_R3G3B2: return TDDS_UNDEFINED; // not supported
-		case TINYDDS_D3DFMT_A8: return TDDS_R8_UNORM;
+		case TINYDDS_D3DFMT_A8: return TDDS_A8_UNORM;
 		case TINYDDS_D3DFMT_A8R3G3B2: return TDDS_UNDEFINED; // not supported
 		case TINYDDS_D3DFMT_X4R4G4B4: return TDDS_A4R4G4B4_UNORM;
 		case TINYDDS_D3DFMT_A2B10G10R10: return TDDS_A2B10G10R10_UNORM;
 		case TINYDDS_D3DFMT_A8B8G8R8: return TDDS_A8B8G8R8_UNORM;
 		case TINYDDS_D3DFMT_X8B8G8R8: return TDDS_A8B8G8R8_UNORM;
-		case TINYDDS_D3DFMT_A2R10G10B10: return TDDS_UNDEFINED; // TODO TDDS_A2B10G10R10_UNORM;
+		case TINYDDS_D3DFMT_A2R10G10B10: return TDDS_A2R10G10B10_UNORM;
 		case TINYDDS_D3DFMT_G16R16: return TDDS_R16G16_UNORM;
 		case TINYDDS_D3DFMT_A16B16G16R16: return TDDS_R16G16B16A16_UNORM;
 		case TINYDDS_D3DFMT_R16F: return TDDS_R16_SFLOAT;
@@ -1096,7 +1100,7 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 
 		TINYDDS_CHK_DDSFORMAT(8, 0xF0, 0x0F, 0, 0, TDDS_R4G4_UNORM);
 		TINYDDS_CHK_DDSFORMAT(8, 0xFF, 0, 0, 0, TDDS_R8_UNORM);
-		TINYDDS_CHK_DDSFORMAT(8, 0, 0, 0, 0xFF, TDDS_R8_UNORM); // A8 as R8
+		TINYDDS_CHK_DDSFORMAT(8, 0, 0, 0, 0xFF, TDDS_A8_UNORM);
 
 		TINYDDS_CHK_DDSFORMAT(16, 0xF000, 0x0F00, 0x00F0, 0x000F, TDDS_R4G4B4A4_UNORM);
 		TINYDDS_CHK_DDSFORMAT(16, 0x0F00, 0x00F0, 0x000F, 0xF000, TDDS_A4R4G4B4_UNORM);
@@ -1397,8 +1401,14 @@ uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 	uint32_t h = TinyDDS_MipMapReduce(ctx->header.height, mipmaplevel);
 	uint32_t d = TinyDDS_MipMapReduce(ctx->header.depth, mipmaplevel);
 	uint32_t s = ctx->headerDx10.arraySize ? ctx->headerDx10.arraySize : 1;
+	if(ctx->header.caps2 & TINYDDS_DDSCAPS2_CUBEMAP) {
+		s = 6;
+	}
 
+	uint32_t pitch = ctx->header.pitchOrLinearSize >> (mipmaplevel * 2);
 	if (TinyDDS_IsCompressed(ctx->format)) {
+		if(pitch != 0) return pitch * s;
+
 		if(w < 4 || h < 4) {
 			ctx->callbacks.error(ctx->user, "Compressed formats can't be less the 4x4 pixels");
 			return 0;
@@ -1407,7 +1417,7 @@ uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 		w = w / 4;
 		h = h / 4;
 	}
-	uint32_t pitch = ctx->header.pitchOrLinearSize;
+
 	uint32_t const formatSize = TinyDDS_FormatSize(ctx->format);
 	if(pitch == 0) {
    		pitch = w * formatSize;
@@ -1451,7 +1461,10 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 
 	ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.alloc(ctx->user, size);
 	if (ctx->mipmaps[mipmaplevel]) {
-		ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
+		size_t read = ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
+		if(read != size) {
+			return NULL;
+		}
 	}
 
 	return ctx->mipmaps[mipmaplevel];
@@ -1605,7 +1618,7 @@ bool TinyDDS_WriteImage(TinyDDS_WriteCallbacks const *callbacks,
 	// do we have to force dx10 (for slices)
 	if (slices > 1) {
 		if(headerDX10.DXGIFormat == TIF_DXGI_FORMAT_UNKNOWN) {
-			// DDS doesn't support slices for formats that are DXGI compatible
+			// DDS doesn't support slices for formats that aren't DXGI compatible
 			return false;
 		}
 		header.formatFlags = TINYDDS_DDPF_FOURCC;
