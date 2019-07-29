@@ -1104,9 +1104,9 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 
 		TINYDDS_CHK_DDSFORMAT(16, 0xF000, 0x0F00, 0x00F0, 0x000F, TDDS_R4G4B4A4_UNORM);
 		TINYDDS_CHK_DDSFORMAT(16, 0x0F00, 0x00F0, 0x000F, 0xF000, TDDS_A4R4G4B4_UNORM);
-		TINYDDS_CHK_DDSFORMAT(16, 0x0F00, 0x00F0, 0x000F, 0x0000, TDDS_R4G4B4A4_UNORM); //X8
+		TINYDDS_CHK_DDSFORMAT(16, 0x0F00, 0x00F0, 0x000F, 0x0000, TDDS_A4R4G4B4_UNORM); //X8
 		TINYDDS_CHK_DDSFORMAT(16, 0x00F0, 0x0F00, 0xF000, 0x000F, TDDS_B4G4R4A4_UNORM);
-		TINYDDS_CHK_DDSFORMAT(16, 0x00F0, 0x0F00, 0xF000, 0x0000, TDDS_R4G4B4A4_UNORM); // X8
+		TINYDDS_CHK_DDSFORMAT(16, 0x00F0, 0x0F00, 0xF000, 0x0000, TDDS_B4G4R4A4_UNORM); // X8
 		TINYDDS_CHK_DDSFORMAT(16, 0x7C00, 0x03E0, 0x001F, 0x8000, TDDS_A1R5G5B5_UNORM);
 		TINYDDS_CHK_DDSFORMAT(16, 0x7C00, 0x03E0, 0x001F, 0x0000, TDDS_A1R5G5B5_UNORM); // X1
 		TINYDDS_CHK_DDSFORMAT(16, 0x003E, 0x07C0, 0xF800, 0x0001, TDDS_B5G5R5A1_UNORM);
@@ -1125,6 +1125,7 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		TINYDDS_CHK_DDSFORMAT(32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF, TDDS_R8G8B8A8_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x00000000, TDDS_A8B8G8R8_UNORM); // X
 		TINYDDS_CHK_DDSFORMAT(32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000, TDDS_A8R8G8B8_UNORM);
+		TINYDDS_CHK_DDSFORMAT(32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000, TDDS_A8R8G8B8_UNORM); // X8
 		TINYDDS_CHK_DDSFORMAT(32, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF, TDDS_B8G8R8A8_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x00000000, TDDS_B8G8R8A8_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000, TDDS_A8R8G8B8_UNORM);
@@ -1146,8 +1147,8 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 	}
 
 	if (ctx->header.formatFlags & TINYDDS_DDPF_LUMINANCE) {
-		TINYDDS_CHK_DDSFORMAT(8, 0x0F, 0xF0, 0x00, 0x00, TDDS_R4G4_UNORM); // this is A4L4 aka A4R4 we decode this as R4G4
-		TINYDDS_CHK_DDSFORMAT(16, 0x00FF, 0xFF00, 0x0000, 0x0000, TDDS_R8G8_UNORM); // this is A8L8 aka A4R8 we decode this as R8G8
+		TINYDDS_CHK_DDSFORMAT(8, 0x0F, 0x00, 0x00, 0xF0, TDDS_R4G4_UNORM); // this is A4L4 aka A4R4 we decode this as R4G4
+		TINYDDS_CHK_DDSFORMAT(16, 0x00FF, 0x0000, 0x0000, 0xFF00, TDDS_R8G8_UNORM); // this is A8L8 aka A4R8 we decode this as R8G8
 
 		if (ctx->header.formatRGBBitCount == 8) return TDDS_R8_UNORM;
 		if (ctx->header.formatRGBBitCount == 16) return TDDS_R16_UNORM;
@@ -1209,20 +1210,30 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 		return false;
 	}
 
-	// we 'correct' compressed mipmap counts
-	if (TinyDDS_IsCompressed(ctx->format) && ctx->header.mipMapCount > 1) {
+	// correct for dodgy mipmap levels counts
+	 if(ctx->header.mipMapCount > 1) {
 		uint32_t w = ctx->header.width;
 		uint32_t h = ctx->header.height;
 
 		for(uint32_t i = 0; i < ctx->header.mipMapCount;++i) {
-			if( w <= 4 || h <= 4) {
+			if (TinyDDS_IsCompressed(ctx->format)) {
+				if (w <= 4 || h <= 4) {
+					ctx->header.mipMapCount = i + 1;
+					break;
+				}
+			} else if (w <= 1 || h <= 1) {
 				ctx->header.mipMapCount = i + 1;
 				break;
 			}
+
+
 			w = w / 2;
 			h = h / 2;
 		}
 
+	}
+
+	if (TinyDDS_IsCompressed(ctx->format)) {
 		// compressed images never get asked to make mip maps which is good as
 		// requires decompress/compress cycle
 		if(ctx->header.mipMapCount == 0) ctx->header.mipMapCount = 1;
@@ -1469,7 +1480,7 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 		// at least one cubemap generater has mipMapCount wrong which causes
 		// image artifacts :(
 		uint64_t nextFaceOffset = 0;
-		for(uint32_t i = 0;i < ctx->header.mipMapCount + 1;++i) {
+		for(uint32_t i = 0;i < ctx->header.mipMapCount;++i) {
 			nextFaceOffset += TinyDDS_FaceSize(handle, i);
 		}
 
