@@ -1094,6 +1094,17 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 	// okay back to direct draw surface bit fields to try and work format out.
 	// TODO this could be better i'm sure
 
+	if ((ctx->header.formatFlags & TINYDDS_DDPF_PALETTEINDEXED4)) {
+		// currnetly can't support 4 bit per pixel outside a compressed format...
+			return TDDS_UNDEFINED;
+	}
+
+	if ((ctx->header.formatFlags & TINYDDS_DDPF_PALETTEINDEXED8)) {
+		// TODO decode palette for now just return as R8
+		return TDDS_R8_UINT;
+	}
+// what is this? TINYDDS_DDPF_PALETTEINDEXEDTO8
+
 	// most have RGB data and/or alpha
 	if ((ctx->header.formatFlags & TINYDDS_DDPF_RGB) ||
 			(ctx->header.formatFlags & TINYDDS_DDPF_ALPHA)) {
@@ -1135,6 +1146,10 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		TINYDDS_CHK_DDSFORMAT(32, 0xFFFF0000, 0x0000FFFF, 0x00000000, 0x00000000, TDDS_R16G16_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x0000FFFF, 0xFFFF0000, 0x00000000, 0x00000000, TDDS_R16G16_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000, TDDS_R32_UINT);
+
+		if (ctx->header.formatRGBBitCount == 8) return TDDS_R8_UINT;
+		if (ctx->header.formatRGBBitCount == 16) return TDDS_R16_UINT;
+		if (ctx->header.formatRGBBitCount == 32) return TDDS_R32_UINT;
 	}
 
 	if ((ctx->header.formatFlags & TINYDDS_DDPF_BUMPDUDV) ||
@@ -1142,8 +1157,14 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		TINYDDS_CHK_DDSFORMAT(16, 0xFF00, 0x00FF, 0x0000, 0x0000, TDDS_R8G8_SNORM);
 		TINYDDS_CHK_DDSFORMAT(16, 0x00FF, 0xFF00, 0x0000, 0x0000, TDDS_R8G8_SNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0xFFFF0000, 0x0000FFFF, 0x0000, 0x0, TDDS_R16G16_SNORM);
-		TINYDDS_CHK_DDSFORMAT(32, 0xFFFF0000, 0x0000FFFF, 0x0000, 0x0, TDDS_R16G16_SNORM); // G8R8
-		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x0, TDDS_A8B8G8R8_SNORM); // G8R8
+		TINYDDS_CHK_DDSFORMAT(32, 0x0000FFFF, 0xFFFF0000, 0x0000, 0x0, TDDS_R16G16_SNORM); // G8R8
+		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000, TDDS_A8B8G8R8_SNORM); // G8R8B8X8
+		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000, TDDS_A8B8G8R8_SNORM); // G8R8B8X8
+		TINYDDS_CHK_DDSFORMAT(32, 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000, TDDS_A2R10G10B10_UNORM); // SNORM
+
+		if (ctx->header.formatRGBBitCount == 8) return TDDS_R8_SINT;
+		if (ctx->header.formatRGBBitCount == 16) return TDDS_R16_SINT;
+		if (ctx->header.formatRGBBitCount == 32) return TDDS_R32_SINT;
 	}
 
 	if (ctx->header.formatFlags & TINYDDS_DDPF_LUMINANCE) {
@@ -1204,7 +1225,8 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 		return false;
 	}
 
-	if(	(ctx->header.formatRGBBitCount != 0) &&
+	if(	(ctx->header.formatFourCC == 0) &&
+			(ctx->header.formatRGBBitCount != 0) &&
 			((ctx->header.formatRGBBitCount/8) != TinyDDS_FormatSize(ctx->format))) {
 		ctx->callbacks.error(ctx->user, "Format size mismatch");
 		return false;
