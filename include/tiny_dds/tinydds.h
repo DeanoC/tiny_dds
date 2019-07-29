@@ -1117,8 +1117,8 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		TINYDDS_CHK_DDSFORMAT(16, 0x00FF, 0xFF00, 0x0000, 0x0000, TDDS_R8G8_UNORM); //G8R8
 		TINYDDS_CHK_DDSFORMAT(16, 0xFFFF, 0x0000, 0x0000, 0x0000, TDDS_R16_UNORM);
 
-		TINYDDS_CHK_DDSFORMAT(24, 0xFF0000, 0x00FF00, 0x0000FF, 0x0, TDDS_R8G8B8_UNORM);
-		TINYDDS_CHK_DDSFORMAT(24, 0x0000FF, 0x00FF00, 0xFF0000, 0x0, TDDS_B8G8R8_UNORM);
+		TINYDDS_CHK_DDSFORMAT(24, 0xFF0000, 0x00FF00, 0x0000FF, 0x0, TDDS_B8G8R8_UNORM);
+		TINYDDS_CHK_DDSFORMAT(24, 0x0000FF, 0x00FF00, 0xFF0000, 0x0, TDDS_R8G8B8_UNORM);
 
 		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000, TDDS_A8B8G8R8_UNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000, TDDS_A8B8G8R8_UNORM); // X
@@ -1477,10 +1477,13 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 			offset += TinyDDS_FaceSize(handle, i);
 		}
 
+		uint32_t mipMapCount = ctx->header.mipMapCount;
+		if(mipMapCount == 0) mipMapCount = 1;
+
 		// at least one cubemap generater has mipMapCount wrong which causes
 		// image artifacts :(
 		uint64_t nextFaceOffset = 0;
-		for(uint32_t i = 0;i < ctx->header.mipMapCount;++i) {
+		for(uint32_t i = 0;i < mipMapCount;++i) {
 			nextFaceOffset += TinyDDS_FaceSize(handle, i);
 		}
 
@@ -1489,27 +1492,6 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 		if(!ctx->mipmaps[mipmaplevel]) return NULL;
 
 		uint8_t *dstPtr = (uint8_t*)ctx->mipmaps[mipmaplevel];
-/*		for (uint32_t i = 0u;i < 6;++i) {
-			for (uint32_t j = 0u; j < faceSize / 4; ++j) {
-				switch(i) {
-				case 0: *(uint32_t *) (dstPtr + (j * 4)) = 0xDCDCDCDC;
-					break;
-				case 1: *(uint32_t *) (dstPtr + (j * 4)) = 0x00FF00DC;
-					break;
-				case 2: *(uint32_t *) (dstPtr + (j * 4)) = 0x000000FF;
-					break;
-				case 3: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC000000;
-					break;
-				case 4: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC00DC00;
-					break;
-				case 5: *(uint32_t *) (dstPtr + (j * 4)) = 0xDC0000DC;
-					break;
-				}
-			}
-			dstPtr += faceSize;
-		}
-*/
-		dstPtr = (uint8_t*)ctx->mipmaps[mipmaplevel];
 		for (uint32_t i = 0u;i < 6;++i) {
 			ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
 			size_t read = ctx->callbacks.read(ctx->user, (void *) dstPtr, faceSize);
