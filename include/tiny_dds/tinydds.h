@@ -386,6 +386,8 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_A8_UNORM: return TinyImageFormat_A8_UNORM;
 	case TDDS_BC1_RGB_UNORM_BLOCK: return TinyImageFormat_BC1_RGB_UNORM_BLOCK;
 	case TDDS_BC1_RGBA_UNORM_BLOCK: return TinyImageFormat_BC1_RGBA_UNORM_BLOCK;
+	case TDDS_BC1_RGB_SRGB_BLOCK:			return TinyImageFormat_BC1_RGB_SRGB_BLOCK;
+	case TDDS_BC1_RGBA_SRGB_BLOCK:			return TinyImageFormat_BC1_RGBA_SRGB_BLOCK;
 	case TDDS_BC2_UNORM_BLOCK: return TinyImageFormat_BC2_UNORM_BLOCK;
 	case TDDS_BC2_SRGB_BLOCK: return TinyImageFormat_BC2_SRGB_BLOCK;
 	case TDDS_BC3_UNORM_BLOCK: return TinyImageFormat_BC3_UNORM_BLOCK;
@@ -437,7 +439,6 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_A2B10G10R10_UNORM:	return TinyImageFormat_A2B10G10R10_UNORM_PACK32;
 	case TDDS_A2B10G10R10_UINT:	return TinyImageFormat_A2B10G10R10_UINT_PACK32;
 	case TDDS_A2R10G10B10_UNORM:	return TinyImageFormat_A2R10G10B10_UNORM_PACK32;
-	case TDDS_BC1_RGB_SRGB_BLOCK:			return TinyImageFormat_BC1_RGB_SRGB_BLOCK;
 	case TDDS_A4R4G4B4_UNORM:	return TinyImageFormat_A4R4G4B4_UNORM_PACK16;
 	case TDDS_A8R8G8B8_UNORM:	return TinyImageFormat_A8R8G8B8_UNORM_PACK32;
 	default:
