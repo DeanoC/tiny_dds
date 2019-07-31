@@ -439,9 +439,6 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_B8G8R8_UINT:	return TinyImageFormat_B8G8R8_UINT;
 	case TDDS_B8G8R8_SINT:	return TinyImageFormat_B8G8R8_SINT;
 	case TDDS_B8G8R8_SRGB:	return TinyImageFormat_B8G8R8_SRGB;
-	case TDDS_A8B8G8R8_UNORM:	return TinyImageFormat_A8B8G8R8_UNORM_PACK32;
-	case TDDS_A8B8G8R8_SNORM:	return TinyImageFormat_A8B8G8R8_SNORM_PACK32;
-	case TDDS_A8B8G8R8_SRGB:		return TinyImageFormat_A8B8G8R8_SRGB_PACK32;
 	case TDDS_B8G8R8A8_SNORM:					return TinyImageFormat_B8G8R8A8_SNORM;
 	case TDDS_R16G16B16_UNORM:				return TinyImageFormat_R16G16B16_UNORM;
 	case TDDS_R16G16B16_SNORM:				return TinyImageFormat_R16G16B16_SNORM;
@@ -451,26 +448,29 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_A2B10G10R10_UNORM:	return TinyImageFormat_A2B10G10R10_UNORM_PACK32;
 	case TDDS_A2R10G10B10_UNORM:	return TinyImageFormat_A2R10G10B10_UNORM_PACK32;
 	case TDDS_A4R4G4B4_UNORM:	return TinyImageFormat_A4R4G4B4_UNORM_PACK16;
-	case TDDS_A8R8G8B8_UNORM:	return TinyImageFormat_A8R8G8B8_UNORM_PACK32;
 
 	case TDDS_R9G9B9E5_UFLOAT: return TinyImageFormat_E5B9G9R9_UFLOAT_PACK32;
 	case TDDS_R11G11B10_UFLOAT: return TinyImageFormat_B10G11R11_UFLOAT_PACK32;
-	case TDDS_G4R4_UNORM: return TinyImageFormat_R4G4_UNORM_PACK8;
-	case TDDS_X4B4G4R4_UNORM: return TinyImageFormat_R4G4B4A4_UNORM_PACK16; // X
-	case TDDS_X4R4G4B4_UNORM: return TinyImageFormat_B4G4R4A4_UNORM_PACK16; // X
-	case TDDS_B4G4R4X4_UNORM: return TinyImageFormat_A4R4G4B4_UNORM_PACK16; // X
-	case TDDS_B5G5R5X1_UNORM: return TinyImageFormat_A1R5G5B5_UNORM_PACK16; // X
-	case TDDS_X1R5G5B5_UNORM: return TinyImageFormat_B5G5R5A1_UNORM_PACK16;
-	case TDDS_X1B5G5R5_UNORM: return TinyImageFormat_R5G5B5A1_UNORM_PACK16;
+	case TDDS_G4R4_UNORM: return TinyImageFormat_G4R4_UNORM_PACK8;
+	case TDDS_X4B4G4R4_UNORM: return TinyImageFormat_A4B4G4R4_UNORM_PACK16; // X
+	case TDDS_X4R4G4B4_UNORM: return TinyImageFormat_A4R4G4B4_UNORM_PACK16; // X
+	case TDDS_B4G4R4X4_UNORM: return TinyImageFormat_B4G4R4A4_UNORM_PACK16; // X
+	case TDDS_B5G5R5X1_UNORM: return TinyImageFormat_B5G5R5A1_UNORM_PACK16; // X
+	case TDDS_X1R5G5B5_UNORM: return TinyImageFormat_A1R5G5B5_UNORM_PACK16;
+	case TDDS_X1B5G5R5_UNORM: return TinyImageFormat_A1B5G5R5_UNORM_PACK16;
 	case TDDS_G8R8_UNORM: return TinyImageFormat_R8G8_UNORM;
 	case TDDS_G8R8_SNORM: return TinyImageFormat_R8G8_SNORM;
-	case TDDS_R8G8B8X8_UNORM: return TinyImageFormat_A8B8G8R8_UNORM_PACK32; // X
-	case TDDS_B8G8R8X8_UNORM: return TinyImageFormat_A8R8G8B8_UNORM_PACK32; // X
 	case TDDS_X8B8G8R8_UNORM: return TinyImageFormat_R8G8B8A8_UNORM; // X
 	case TDDS_X8R8G8B8_UNORM: return TinyImageFormat_B8G8R8A8_UNORM; // X
 	case TDDS_B10G10R10A2_UNORM: return TinyImageFormat_A2R10G10B10_UNORM_PACK32;
 	case TDDS_G16R16_UNORM: return TinyImageFormat_R16G16_UNORM;
 	case TDDS_G16R16_SNORM: return TinyImageFormat_R16G16_SNORM;
+	case TDDS_A8B8G8R8_SNORM:break;
+	case TDDS_A8B8G8R8_SRGB:break;
+	case TDDS_R8G8B8X8_UNORM:break;
+	case TDDS_B8G8R8X8_UNORM:break;
+	case TDDS_A8B8G8R8_UNORM:break;
+	case TDDS_A8R8G8B8_UNORM:break;
 	}
 	return TinyImageFormat_UNDEFINED;
 }
@@ -486,10 +486,6 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 	case TinyImageFormat_B4G4R4A4_UNORM_PACK16: return TDDS_A4R4G4B4_UNORM;
 	case TinyImageFormat_R5G5B5A1_UNORM_PACK16:	return TDDS_A1B5G5R5_UNORM;
 	case TinyImageFormat_A1R5G5B5_UNORM_PACK16:	return TDDS_B5G5R5A1_UNORM;
-	case TinyImageFormat_A8B8G8R8_UNORM_PACK32:	return TDDS_R8G8B8A8_UNORM;
-	case TinyImageFormat_A8B8G8R8_SNORM_PACK32:	return TDDS_R8G8B8A8_SNORM;
-	case TinyImageFormat_A8B8G8R8_SRGB_PACK32:	return TDDS_R8G8B8A8_SRGB;
-	case TinyImageFormat_A8R8G8B8_UNORM_PACK32:	return TDDS_B8G8R8A8_UNORM;
 	case TinyImageFormat_A2B10G10R10_UNORM_PACK32:	return TDDS_R10G10B10A2_UNORM;
 	case TinyImageFormat_A2R10G10B10_UNORM_PACK32: return TDDS_B10G10R10A2_UNORM;
 	case TinyImageFormat_E5B9G9R9_UFLOAT_PACK32: return TDDS_R9G9B9E5_UFLOAT;
@@ -595,28 +591,6 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 	case TinyImageFormat_PVR_2BPPA_SRGB_BLOCK:
 	case TinyImageFormat_PVR_4BPP_SRGB_BLOCK:
 	case TinyImageFormat_PVR_4BPPA_SRGB_BLOCK:
-	case TinyImageFormat_R8_USCALED:
-	case TinyImageFormat_R8_SSCALED:
-	case TinyImageFormat_R8G8_USCALED:
-	case TinyImageFormat_R8G8_SSCALED:
-	case TinyImageFormat_R8G8B8_USCALED:
-	case TinyImageFormat_R8G8B8_SSCALED:
-	case TinyImageFormat_B8G8R8_USCALED:
-	case TinyImageFormat_B8G8R8_SSCALED:
-	case TinyImageFormat_R8G8B8A8_USCALED:
-	case TinyImageFormat_R8G8B8A8_SSCALED:
-	case TinyImageFormat_B8G8R8A8_USCALED:
-	case TinyImageFormat_B8G8R8A8_SSCALED:
-	case TinyImageFormat_A8B8G8R8_USCALED_PACK32:
-	case TinyImageFormat_A8B8G8R8_SSCALED_PACK32:
-	case TinyImageFormat_R16_USCALED:
-	case TinyImageFormat_R16_SSCALED:
-	case TinyImageFormat_R16G16_USCALED:
-	case TinyImageFormat_R16G16_SSCALED:
-	case TinyImageFormat_R16G16B16_USCALED:
-	case TinyImageFormat_R16G16B16_SSCALED:
-	case TinyImageFormat_R16G16B16A16_USCALED:
-	case TinyImageFormat_R16G16B16A16_SSCALED:
 	case TinyImageFormat_R8_SRGB:
 	case TinyImageFormat_R8G8_SRGB:
 	case TinyImageFormat_R8G8B8_SRGB:
@@ -676,14 +650,21 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 	case TinyImageFormat_B8G8R8A8_UINT:
 	case TinyImageFormat_B8G8R8A8_SINT:
 	case TinyImageFormat_D32_SFLOAT_S8_UINT:
-	case TinyImageFormat_A8B8G8R8_UINT_PACK32:
-	case TinyImageFormat_A8B8G8R8_SINT_PACK32:
-	case TinyImageFormat_A2R10G10B10_USCALED_PACK32:
 	case TinyImageFormat_A2R10G10B10_UINT_PACK32:
-	case TinyImageFormat_A2B10G10R10_USCALED_PACK32:
 	case TinyImageFormat_A2B10G10R10_UINT_PACK32:
 	case TinyImageFormat_X8_D24_UNORM_PACK32:
 	case TinyImageFormat_UNDEFINED: return TDDS_UNDEFINED;
+	case TinyImageFormat_G4R4_UNORM_PACK8:break;
+	case TinyImageFormat_A4B4G4R4_UNORM_PACK16:break;
+	case TinyImageFormat_X4R4G4B4_UNORM_PACK16:break;
+	case TinyImageFormat_X4B4G4R4_UNORM_PACK16:break;
+	case TinyImageFormat_R5G5B5X1_UNORM_PACK16:break;
+	case TinyImageFormat_B5G5R5X1_UNORM_PACK16:break;
+	case TinyImageFormat_A1B5G5R5_UNORM_PACK16:break;
+	case TinyImageFormat_X1R5G5B5_UNORM_PACK16:break;
+	case TinyImageFormat_X1B5G5R5_UNORM_PACK16:break;
+	case TinyImageFormat_R8G8B8X8_UNORM:break;
+	case TinyImageFormat_B8G8R8X8_UNORM:break;
 	}
 
 	return TDDS_UNDEFINED;
