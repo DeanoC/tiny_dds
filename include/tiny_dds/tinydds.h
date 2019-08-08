@@ -1855,6 +1855,30 @@ static bool TinyDDS_EncodeFormat(TinyDDS_Format fmt, TinyDDS_Header* header, Tin
 	case TDDS_B8G8R8A8_SNORM:
 	case TDDS_A8B8G8R8_SRGB:
 	case TDDS_G16R16_SNORM:
+	case TDDS_AYUV:
+	case TDDS_Y410:
+	case TDDS_Y416:
+	case TDDS_NV12:
+	case TDDS_P010:
+	case TDDS_P016:
+	case TDDS_420_OPAQUE:
+	case TDDS_YUY2:
+	case TDDS_Y210:
+	case TDDS_Y216:
+	case TDDS_NV11:
+	case TDDS_AI44:
+	case TDDS_IA44:
+	case TDDS_P8:
+	case TDDS_A8P8:
+	case TDDS_R10G10B10_7E3_A2_FLOAT:
+	case TDDS_R10G10B10_6E4_A2_FLOAT:
+	case TDDS_D16_UNORM_S8_UINT:
+	case TDDS_R16_UNORM_X8_TYPELESS:
+	case TDDS_X16_TYPELESS_G8_UINT:
+	case TDDS_P208:
+	case TDDS_V208:
+	case TDDS_V408:
+	case TDDS_R10G10B10_SNORM_A2_UNORM:
 		break;
 	}
 	// these formats can probably be done via dx10 header so check
