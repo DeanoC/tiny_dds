@@ -232,6 +232,7 @@ typedef enum TinyDDS_Format {
 	TDDS_R8_UNORM = TIF_DXGI_FORMAT_R8_UNORM,
 	TDDS_R8_SNORM = TIF_DXGI_FORMAT_R8_SNORM,
 	TDDS_A8_UNORM = TIF_DXGI_FORMAT_A8_UNORM,
+	TDDS_R1_UNORM = TIF_DXGI_FORMAT_R1_UNORM,
 	TDDS_R8_UINT = TIF_DXGI_FORMAT_R8_UINT,
 	TDDS_R8_SINT = TIF_DXGI_FORMAT_R8_SINT,
 	TDDS_R8G8_UNORM = TIF_DXGI_FORMAT_R8G8_UNORM,
@@ -508,6 +509,7 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	case TDDS_A8B8G8R8_SNORM: return TinyImageFormat_R8G8B8X8_UNORM;
 	case TDDS_P8: return TinyImageFormat_CLUT_P8;
 	case TDDS_A8P8: return TinyImageFormat_CLUT_P8A8;
+	case TDDS_R1_UNORM: return TinyImageFormat_R1_UNORM;
 
 	case TDDS_AYUV:break;
 	case TDDS_Y410:break;
@@ -654,6 +656,7 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 
 	case TinyImageFormat_CLUT_P8: return TDDS_P8;
 	case TinyImageFormat_CLUT_P8A8: return TDDS_A8P8;
+	case TinyImageFormat_R1_UNORM: return TDDS_R1_UNORM;
 
 		// unsupported
 	// TODO Some of these can be via Dx10/4CC codes I think
@@ -900,9 +903,12 @@ static bool TinyDDS_IsCompressed(TinyDDS_Format fmt) {
 	}
 }
 
-// the size is per pixel for uncompressed and per block of 16 pixels for compressed
+// the size is per pixel (except R1) for uncompressed and per block of 16 pixels for compressed
 static uint32_t TinyDDS_FormatSize(TinyDDS_Format fmt) {
 	switch(fmt) {
+	// 8 pixels at 1 bits each
+	case TDDS_R1_UNORM:
+		return 1;
 		// 2 * 4 bits
 	case TDDS_R4G4_UNORM:
 	case TDDS_G4R4_UNORM:
@@ -1127,7 +1133,7 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		case TINYDDS_D3DFMT_G32R32F: return TDDS_R32G32_SFLOAT;
 		case TINYDDS_D3DFMT_A32B32G32R32F: return TDDS_R32G32B32A32_SFLOAT;
 		case TINYDDS_D3DFMT_CxV8U8: return TDDS_UNDEFINED;
-		case TINYDDS_D3DFMT_A1: return TDDS_UNDEFINED;          // TODO TDDS_R1_UNORM_PACK32?
+		case TINYDDS_D3DFMT_A1: return TDDS_R1_UNORM;
 		case TINYDDS_D3DFMT_A2B10G10R10_XR_BIAS: return TDDS_UNDEFINED;
 
 			// real 4CC no exotics yet just the block compression ones
@@ -1165,6 +1171,8 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 	// most have RGB data and/or alpha
 	if ((ctx->header.formatFlags & TINYDDS_DDPF_RGB) ||
 			(ctx->header.formatFlags & TINYDDS_DDPF_ALPHA)) {
+
+		TINYDDS_CHK_DDSFORMAT(1, 0x1, 0x0, 0, 0, TDDS_R1_UNORM);
 
 		TINYDDS_CHK_DDSFORMAT(8, 0xF0, 0x0F, 0, 0, TDDS_G4R4_UNORM);
 		TINYDDS_CHK_DDSFORMAT(8, 0x0F, 0xF0, 0, 0, TDDS_R4G4_UNORM);
@@ -1530,6 +1538,10 @@ uint32_t TinyDDS_FaceSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 		w = (w + 3) / 4;
 		h = (h + 3) / 4;
 	}
+	// 1 bit special case
+	if(ctx->format == TDDS_R1_UNORM) {
+		w = (w + 7) / 8;
+	}
 
 	uint32_t const formatSize = TinyDDS_FormatSize(ctx->format);
 	return w * h * d * s * formatSize;
@@ -1679,6 +1691,7 @@ static bool TinyDDS_EncodeFormat(TinyDDS_Format fmt, TinyDDS_Header* header, Tin
 	switch(fmt) {
 	case TDDS_UNDEFINED: break;
 
+	case TDDS_R1_UNORM: TDDS_EF_RGB(1, 0x1, 0, 0)
 	case TDDS_R4G4_UNORM: TDDS_EF_RGB(8, 0x0F, 0xF0, 0)
 	case TDDS_G4R4_UNORM: TDDS_EF_RGB(8, 0xF0, 0x0F, 0)
 	case TDDS_B2G3R3_UNORM: TDDS_EF_RGB(8, 0x3, 0x7, 0x7 )
