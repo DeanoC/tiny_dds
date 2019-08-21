@@ -375,9 +375,13 @@ typedef enum TinyDDS_Format {
 	TDDS_A8R8G8B8_UNORM,
 	TDDS_X8R8G8B8_UNORM,
 
+	TDDS_R10G10B10A2_SNORM,
 	TDDS_B10G10R10A2_UNORM,
+	TDDS_B10G10R10A2_SNORM,
 	TDDS_A2B10G10R10_UNORM,
+	TDDS_A2B10G10R10_SNORM,
 	TDDS_A2R10G10B10_UNORM,
+	TDDS_A2R10G10B10_SNORM,
 
 	TDDS_G16R16_UNORM,
 	TDDS_G16R16_SNORM,
@@ -493,9 +497,13 @@ static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 
 	// DDS A2R10B10G10 support is basically broken historically so expect channels to need swapping
 	case TDDS_A2B10G10R10_UNORM:	return TinyImageFormat_A2B10G10R10_UNORM;
+	case TDDS_A2B10G10R10_SNORM:	return TinyImageFormat_A2B10G10R10_SNORM;
 	case TDDS_A2R10G10B10_UNORM:	return TinyImageFormat_A2R10G10B10_UNORM;
+	case TDDS_A2R10G10B10_SNORM:	return TinyImageFormat_A2R10G10B10_SNORM;
 	case TDDS_B10G10R10A2_UNORM: 	return TinyImageFormat_R10G10B10A2_UNORM;
+	case TDDS_B10G10R10A2_SNORM: 	return TinyImageFormat_R10G10B10A2_SNORM;
 	case TDDS_R10G10B10A2_UNORM: 	return TinyImageFormat_B10G10R10A2_UNORM;
+	case TDDS_R10G10B10A2_SNORM: 	return TinyImageFormat_B10G10R10A2_SNORM;
 	case TDDS_R10G10B10A2_UINT: 	return TinyImageFormat_B10G10R10A2_UINT;
 
 	case TDDS_B8G8R8X8_UNORM: return TinyImageFormat_B8G8R8X8_UNORM;
@@ -567,7 +575,15 @@ static TinyDDS_Format TinyImageFormat_ToTinyDDSFormat(TinyImageFormat fmt) {
 	case TinyImageFormat_B5G6R5_UNORM: return TDDS_B5G6R5_UNORM;
 
 	case TinyImageFormat_A2B10G10R10_UNORM:	return TDDS_A2B10G10R10_UNORM;
-	case TinyImageFormat_A2R10G10B10_UNORM: return TDDS_A2R10G10B10_UNORM;
+	case TinyImageFormat_A2B10G10R10_SNORM:	return TDDS_A2B10G10R10_SNORM;
+	case TinyImageFormat_A2R10G10B10_UNORM:	return TDDS_A2R10G10B10_UNORM;
+	case TinyImageFormat_A2R10G10B10_SNORM:	return TDDS_A2R10G10B10_SNORM;
+	case TinyImageFormat_R10G10B10A2_UNORM: return TDDS_B10G10R10A2_UNORM;
+	case TinyImageFormat_R10G10B10A2_SNORM: return TDDS_B10G10R10A2_SNORM;
+	case TinyImageFormat_B10G10R10A2_UNORM: return TDDS_R10G10B10A2_UNORM;
+	case TinyImageFormat_B10G10R10A2_SNORM: return TDDS_R10G10B10A2_SNORM;
+	case TinyImageFormat_B10G10R10A2_UINT: 	return TDDS_R10G10B10A2_UINT;
+
 	case TinyImageFormat_E5B9G9R9_UFLOAT: return TDDS_R9G9B9E5_UFLOAT;
 	case TinyImageFormat_B10G11R11_UFLOAT: return TDDS_R11G11B10_UFLOAT;
 
@@ -992,11 +1008,16 @@ static uint32_t TinyDDS_FormatSize(TinyDDS_Format fmt) {
 	case TDDS_R10G10B10_7E3_A2_FLOAT:
 	case TDDS_R10G10B10_6E4_A2_FLOAT:
 	case TDDS_R10G10B10_SNORM_A2_UNORM:
-	case TDDS_R10G10B10A2_UINT:
-	case TDDS_R10G10B10A2_UNORM:
+
 	case TDDS_B10G10R10A2_UNORM:
+	case TDDS_B10G10R10A2_SNORM:
 	case TDDS_A2B10G10R10_UNORM:
+	case TDDS_A2B10G10R10_SNORM:
 	case TDDS_A2R10G10B10_UNORM:
+	case TDDS_A2R10G10B10_SNORM:
+	case TDDS_R10G10B10A2_UNORM:
+	case TDDS_R10G10B10A2_SNORM:
+	case TDDS_R10G10B10A2_UINT:
 
 		// 2 * 11 bits + 10 bits
 	case TDDS_R11G11B10_UFLOAT:
@@ -1126,7 +1147,7 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		case TINYDDS_D3DFMT_X8L8V8U8: return TDDS_R8G8B8A8_SNORM;
 		case TINYDDS_D3DFMT_Q8W8V8U8: return TDDS_R8G8B8A8_SNORM;
 		case TINYDDS_D3DFMT_V16U16: return TDDS_R16G16_SNORM;
-			//		case TINYDDS_D3DFMT_A2W10V10U10: return TDDS_A2R10G10B10_SNORM_PACK32;
+		case TINYDDS_D3DFMT_A2W10V10U10: return TDDS_A2B10G10R10_SNORM;
 		case TINYDDS_D3DFMT_L16: return TDDS_R16_UNORM;
 		case TINYDDS_D3DFMT_Q16W16V16U16: return TDDS_R16G16B16A16_SNORM;
 		case TINYDDS_D3DFMT_R32F: return TDDS_R32_SFLOAT;
@@ -1254,6 +1275,10 @@ static TinyDDS_Format TinyDDS_DecodeFormat(TinyDDS_Context *ctx) {
 		TINYDDS_CHK_DDSFORMAT(32, 0xFFFF0000, 0x0000FFFF, 0x0000, 0x0, TDDS_G16R16_SNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x0000FFFF, 0xFFFF0000, 0x0000, 0x0, TDDS_R16G16_SNORM);
 		TINYDDS_CHK_DDSFORMAT(32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000, TDDS_R8G8B8A8_SNORM);
+		TINYDDS_CHK_DDSFORMAT(32, 0x000003FF, 0x000FFC00, 0x3FF00000, 0xC0000000, TDDS_R10G10B10A2_SNORM);
+		TINYDDS_CHK_DDSFORMAT(32, 0x3FF00000, 0x000FFC00, 0x000003FF, 0xC0000000, TDDS_B10G10R10A2_SNORM);
+		TINYDDS_CHK_DDSFORMAT(32, 0x00000FFC, 0x003FF000, 0xFFC00000, 0x00000003, TDDS_A2R10G10B10_SNORM);
+		TINYDDS_CHK_DDSFORMAT(32, 0xFFC00000, 0x003FF000, 0x00000FFC, 0x00000003, TDDS_A2B10G10R10_SNORM);
 
 		if (ctx->header.formatRGBBitCount == 8) return TDDS_R8_SINT;
 		if (ctx->header.formatRGBBitCount == 16) return TDDS_R16_SINT;
@@ -1615,7 +1640,7 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 			ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
 			size_t read = ctx->callbacks.read(ctx->user, (void *) dstPtr, faceSize);
 			if(read != faceSize) {
-				ctx->callbacks.free(ctx->user, &ctx->mipmaps[mipmaplevel]);
+				ctx->callbacks.free(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
 				return NULL;
 			}
 			dstPtr += faceSize;
@@ -1639,7 +1664,7 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 	if (!ctx->mipmaps[mipmaplevel]) return NULL;
 	size_t read = ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
 	if(read != size) {
-		ctx->callbacks.free(ctx->user, &ctx->mipmaps[mipmaplevel]);
+		ctx->callbacks.free(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
 		return NULL;
 	}
 
