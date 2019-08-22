@@ -1810,7 +1810,12 @@ static bool TinyDDS_EncodeFormat(TinyDDS_Format fmt, TinyDDS_Header* header, Tin
 	case TDDS_R10G10B10A2_UNORM:
 	case TDDS_B10G10R10A2_UNORM:
 	case TDDS_A2B10G10R10_UNORM:
-	case TDDS_A2R10G10B10_UNORM:return false;
+	case TDDS_A2R10G10B10_UNORM:
+	case TDDS_R10G10B10A2_SNORM:
+	case TDDS_B10G10R10A2_SNORM:
+	case TDDS_A2B10G10R10_SNORM:
+	case TDDS_A2R10G10B10_SNORM:
+		break;
 
 	case TDDS_R16G16_UNORM: TDDS_EF_RGB( 32,0x0000FFFF, 0xFFFF0000, 0)
 	case TDDS_G16R16_UNORM: TDDS_EF_RGB( 32,0xFFFF0000, 0x0000FFFF, 0)
@@ -1914,6 +1919,7 @@ static bool TinyDDS_EncodeFormat(TinyDDS_Format fmt, TinyDDS_Header* header, Tin
 	case TDDS_V408:
 	case TDDS_R10G10B10_SNORM_A2_UNORM:
 		break;
+
 	}
 	// these formats can probably be done via dx10 header so check
 	if(headerDx10->DXGIFormat == TIF_DXGI_FORMAT_UNKNOWN) return false;
