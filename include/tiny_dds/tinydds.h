@@ -389,7 +389,7 @@ typedef enum TinyDDS_Format {
 } TinyDDS_Format;
 
 // tiny_imageformat/format needs included before tinydds.h for this functionality
-#ifdef TINYIMAGEFORMAT_IMAGEFORMAT_H
+#ifdef TINYIMAGEFORMAT_BASE_H_
 
 static TinyImageFormat TinyImageFormat_FromTinyDDSFormat(TinyDDS_Format fmt) {
 	switch (fmt) {
