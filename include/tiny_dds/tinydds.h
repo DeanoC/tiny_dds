@@ -32,12 +32,12 @@ typedef int64_t (*TinyDDS_TellFunc)(void *user);
 typedef void (*TinyDDS_ErrorFunc)(void *user, char const *msg);
 
 typedef struct TinyDDS_Callbacks {
-	TinyDDS_ErrorFunc error;
-	TinyDDS_AllocFunc alloc;
-	TinyDDS_FreeFunc free;
-	TinyDDS_ReadFunc read;
-	TinyDDS_SeekFunc seek;
-	TinyDDS_TellFunc tell;
+	TinyDDS_ErrorFunc errorFn;
+	TinyDDS_AllocFunc allocFn;
+	TinyDDS_FreeFunc freeFn;
+	TinyDDS_ReadFunc readFn;
+	TinyDDS_SeekFunc seekFn;
+	TinyDDS_TellFunc tellFn;
 } TinyDDS_Callbacks;
 
 TinyDDS_ContextHandle TinyDDS_CreateContext(TinyDDS_Callbacks const *callbacks, void *user);
@@ -830,35 +830,35 @@ static uint32_t TinyDDS_fileIdentifier = TINYDDS_MAKE_RIFFCODE('D', 'D', 'S', ' 
 static void TinyDDS_NullErrorFunc(void *user, char const *msg) {}
 
 TinyDDS_ContextHandle TinyDDS_CreateContext(TinyDDS_Callbacks const *callbacks, void *user) {
-	TinyDDS_Context *ctx = (TinyDDS_Context *) callbacks->alloc(user, sizeof(TinyDDS_Context));
+	TinyDDS_Context *ctx = (TinyDDS_Context *) callbacks->allocFn(user, sizeof(TinyDDS_Context));
 	if (ctx == NULL)
 		return NULL;
 
 	memset(ctx, 0, sizeof(TinyDDS_Context));
 	memcpy(&ctx->callbacks, callbacks, sizeof(TinyDDS_Callbacks));
 	ctx->user = user;
-	if (ctx->callbacks.error == NULL) {
-		ctx->callbacks.error = &TinyDDS_NullErrorFunc;
+	if (ctx->callbacks.errorFn == NULL) {
+		ctx->callbacks.errorFn = &TinyDDS_NullErrorFunc;
 	}
 
-	if (ctx->callbacks.read == NULL) {
-		ctx->callbacks.error(user, "TinyDDS must have read callback");
+	if (ctx->callbacks.readFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyDDS must have read callback");
 		return NULL;
 	}
-	if (ctx->callbacks.alloc == NULL) {
-		ctx->callbacks.error(user, "TinyDDS must have alloc callback");
+	if (ctx->callbacks.allocFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyDDS must have alloc callback");
 		return NULL;
 	}
-	if (ctx->callbacks.free == NULL) {
-		ctx->callbacks.error(user, "TinyDDS must have free callback");
+	if (ctx->callbacks.freeFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyDDS must have free callback");
 		return NULL;
 	}
-	if (ctx->callbacks.seek == NULL) {
-		ctx->callbacks.error(user, "TinyDDS must have seek callback");
+	if (ctx->callbacks.seekFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyDDS must have seek callback");
 		return NULL;
 	}
-	if (ctx->callbacks.tell == NULL) {
-		ctx->callbacks.error(user, "TinyDDS must have tell callback");
+	if (ctx->callbacks.tellFn == NULL) {
+		ctx->callbacks.errorFn(user, "TinyDDS must have tell callback");
 		return NULL;
 	}
 
@@ -873,7 +873,7 @@ void TinyDDS_DestroyContext(TinyDDS_ContextHandle handle) {
 		return;
 	TinyDDS_Reset(handle);
 
-	ctx->callbacks.free(ctx->user, ctx);
+	ctx->callbacks.freeFn(ctx->user, ctx);
 }
 
 void TinyDDS_Reset(TinyDDS_ContextHandle handle) {
@@ -888,7 +888,7 @@ void TinyDDS_Reset(TinyDDS_ContextHandle handle) {
 
 	for (int i = 0; i < TINYDDS_MAX_MIPMAPLEVELS; ++i) {
 		if (ctx->mipmaps[i] != NULL) {
-			callbacks.free(user, (void *) ctx->mipmaps[i]);
+			callbacks.freeFn(user, (void *) ctx->mipmaps[i]);
 		}
 	}
 
@@ -1320,33 +1320,33 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 
-	ctx->headerPos = ctx->callbacks.tell(ctx->user);
-	if( ctx->callbacks.read(ctx->user, &ctx->header, sizeof(TinyDDS_Header)) != sizeof(TinyDDS_Header)) {
-		ctx->callbacks.error(ctx->user, "Count not read DDS header");
+	ctx->headerPos = ctx->callbacks.tellFn(ctx->user);
+	if( ctx->callbacks.readFn(ctx->user, &ctx->header, sizeof(TinyDDS_Header)) != sizeof(TinyDDS_Header)) {
+		ctx->callbacks.errorFn(ctx->user, "Count not read DDS header");
 		return false;
 	}
 
 	// try the easy case of a modern dx10 DDS file
 	if ((ctx->header.formatFlags & TINYDDS_DDPF_FOURCC) &&
 			(ctx->header.formatFourCC == TINYDDS_MAKE_RIFFCODE('D', 'X', '1', '0'))) {
-		ctx->callbacks.read(ctx->user, &ctx->headerDx10, sizeof(TinyDDS_HeaderDX10));
+		ctx->callbacks.readFn(ctx->user, &ctx->headerDx10, sizeof(TinyDDS_HeaderDX10));
 
 		if (ctx->headerDx10.DXGIFormat >= TDDS_SYNTHESISED_DXGIFORMATS) {
-			ctx->callbacks.error(ctx->user, "DX10 Header has an invalid DXGI_FORMAT code");
+			ctx->callbacks.errorFn(ctx->user, "DX10 Header has an invalid DXGI_FORMAT code");
 			return false;
 		}
 	}
 
 	ctx->format = TinyDDS_DecodeFormat(ctx);
 	if (ctx->format == TDDS_UNDEFINED) {
-		ctx->callbacks.error(ctx->user, "Could not decode DDS format");
+		ctx->callbacks.errorFn(ctx->user, "Could not decode DDS format");
 		return false;
 	}
 
 	if(	(ctx->header.formatFourCC == 0) &&
 			(ctx->header.formatRGBBitCount != 0) &&
 			((ctx->header.formatRGBBitCount/8) != TinyDDS_FormatSize(ctx->format))) {
-		ctx->callbacks.error(ctx->user, "Format size mismatch");
+		ctx->callbacks.errorFn(ctx->user, "Format size mismatch");
 		return false;
 	}
 
@@ -1379,7 +1379,7 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 		if(ctx->header.mipMapCount == 0) ctx->header.mipMapCount = 1;
 	}
 
-	ctx->firstImagePos = ctx->callbacks.tell(ctx->user);
+	ctx->firstImagePos = ctx->callbacks.tellFn(ctx->user);
 	ctx->headerValid = true;
 	return true;
 }
@@ -1389,7 +1389,7 @@ bool TinyDDS_IsCubemap(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1405,7 +1405,7 @@ bool TinyDDS_Dimensions(TinyDDS_ContextHandle handle,
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1425,7 +1425,7 @@ uint32_t TinyDDS_Width(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	return ctx->header.width;
@@ -1436,7 +1436,7 @@ uint32_t TinyDDS_Height(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	return ctx->header.height;
@@ -1447,7 +1447,7 @@ uint32_t TinyDDS_Depth(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1459,7 +1459,7 @@ uint32_t TinyDDS_ArraySlices(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1471,7 +1471,7 @@ bool TinyDDS_Is1D(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 	return (ctx->header.height <= 1 && ctx->header.depth <= 1);
@@ -1481,7 +1481,7 @@ bool TinyDDS_Is2D(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 	return (ctx->header.height > 1 && ctx->header.depth <= 1);
@@ -1491,7 +1491,7 @@ bool TinyDDS_Is3D(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1503,7 +1503,7 @@ bool TinyDDS_IsArray(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1515,7 +1515,7 @@ uint32_t TinyDDS_NumberOfMipmaps(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return 0;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1527,7 +1527,7 @@ bool TinyDDS_NeedsGenerationOfMipmaps(TinyDDS_ContextHandle handle) {
 	if (ctx == NULL)
 		return false;
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return false;
 	}
 
@@ -1545,7 +1545,7 @@ uint32_t TinyDDS_FaceSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 		return 0;
 
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 	uint32_t w = TinyDDS_MipMapReduce(ctx->header.width, mipmaplevel);
@@ -1554,7 +1554,7 @@ uint32_t TinyDDS_FaceSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 	uint32_t s = ctx->headerDx10.arraySize ? ctx->headerDx10.arraySize : 1;
 
 	if(d > 1 && s > 1) {
-		ctx->callbacks.error(ctx->user, "Volume textures can't have array slices or be cubemap");
+		ctx->callbacks.errorFn(ctx->user, "Volume textures can't have array slices or be cubemap");
 		return 0;
 	}
 
@@ -1578,7 +1578,7 @@ uint32_t TinyDDS_ImageSize(TinyDDS_ContextHandle handle, uint32_t mipmaplevel) {
 		return 0;
 
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return 0;
 	}
 
@@ -1596,17 +1596,17 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 		return NULL;
 
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return NULL;
 	}
 
 	if (mipmaplevel >= (ctx->header.mipMapCount ? ctx->header.mipMapCount : 1) ) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return NULL;
 	}
 
 	if (mipmaplevel >= TINYDDS_MAX_MIPMAPLEVELS) {
-		ctx->callbacks.error(ctx->user, "Invalid mipmap level");
+		ctx->callbacks.errorFn(ctx->user, "Invalid mipmap level");
 		return NULL;
 	}
 
@@ -1632,15 +1632,15 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 		}
 
 		size_t const faceSize = TinyDDS_FaceSize(handle, mipmaplevel);
-		ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.alloc(ctx->user, faceSize * 6);
+		ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.allocFn(ctx->user, faceSize * 6);
 		if(!ctx->mipmaps[mipmaplevel]) return NULL;
 
 		uint8_t *dstPtr = (uint8_t*)ctx->mipmaps[mipmaplevel];
 		for (uint32_t i = 0u;i < 6;++i) {
-			ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
-			size_t read = ctx->callbacks.read(ctx->user, (void *) dstPtr, faceSize);
+			ctx->callbacks.seekFn(ctx->user, offset + ctx->firstImagePos);
+			size_t read = ctx->callbacks.readFn(ctx->user, (void *) dstPtr, faceSize);
 			if(read != faceSize) {
-				ctx->callbacks.free(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
+				ctx->callbacks.freeFn(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
 				return NULL;
 			}
 			dstPtr += faceSize;
@@ -1658,13 +1658,13 @@ void const *TinyDDS_ImageRawData(TinyDDS_ContextHandle handle, uint32_t mipmaple
 	if (size == 0)
 		return NULL;
 
-	ctx->callbacks.seek(ctx->user, offset + ctx->firstImagePos);
+	ctx->callbacks.seekFn(ctx->user, offset + ctx->firstImagePos);
 
-	ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.alloc(ctx->user, size);
+	ctx->mipmaps[mipmaplevel] = (uint8_t const *) ctx->callbacks.allocFn(ctx->user, size);
 	if (!ctx->mipmaps[mipmaplevel]) return NULL;
-	size_t read = ctx->callbacks.read(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
+	size_t read = ctx->callbacks.readFn(ctx->user, (void *) ctx->mipmaps[mipmaplevel], size);
 	if(read != size) {
-		ctx->callbacks.free(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
+		ctx->callbacks.freeFn(ctx->user, (void*)&ctx->mipmaps[mipmaplevel]);
 		return NULL;
 	}
 
@@ -1677,7 +1677,7 @@ TinyDDS_Format TinyDDS_GetFormat(TinyDDS_ContextHandle handle) {
 		return TDDS_UNDEFINED;
 
 	if (!ctx->headerValid) {
-		ctx->callbacks.error(ctx->user, "Header data hasn't been read yet or its invalid");
+		ctx->callbacks.errorFn(ctx->user, "Header data hasn't been read yet or its invalid");
 		return TDDS_UNDEFINED;
 	}
 	return ctx->format;
