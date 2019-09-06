@@ -1339,7 +1339,7 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 
 	ctx->headerPos = ctx->callbacks.tellFn(ctx->user);
 	if( ctx->callbacks.readFn(ctx->user, &ctx->header, sizeof(TinyDDS_Header)) != sizeof(TinyDDS_Header)) {
-		ctx->callbacks.errorFn(ctx->user, "Count not read DDS header");
+		ctx->callbacks.errorFn(ctx->user, "Could not read DDS header");
 		return false;
 	}
 
@@ -1405,7 +1405,7 @@ bool TinyDDS_ReadHeader(TinyDDS_ContextHandle handle) {
 		ctx->clut = (uint32_t*) ctx->callbacks.allocFn(ctx->user, clutSize);
 
 		if( ctx->callbacks.readFn(ctx->user, (void*)ctx->clut, clutSize) != clutSize) {
-			ctx->callbacks.errorFn(ctx->user, "Count not read DDS CLUT");
+			ctx->callbacks.errorFn(ctx->user, "Could not read DDS CLUT");
 			return false;
 		}
 	}
