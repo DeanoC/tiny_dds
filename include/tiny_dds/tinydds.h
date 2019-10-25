@@ -2001,16 +2001,16 @@ bool TinyDDS_WriteImage(TinyDDS_WriteCallbacks const *callbacks,
 		headerDX10.arraySize = slices;
 	}
 	header.flags = TINYDDS_DDSD_CAPS | TINYDDS_DDSD_PIXELFORMAT | TINYDDS_DDSD_MIPMAPCOUNT;
-	header.caps1 = TINYDDS_DDSCAPS_TEXTURE | TINYDDS_DDSCAPS_COMPLEX | TINYDDS_DDSCAPS_MIPMAP;
+	header.caps1 = TINYDDS_DDSCAPS_TEXTURE | ((mipmaplevels>1)?(TINYDDS_DDSCAPS_COMPLEX | TINYDDS_DDSCAPS_MIPMAP):0);
 
 	if(depth > 1) {
 		headerDX10.resourceDimension = TINYDDS_D3D10_RESOURCE_DIMENSION_TEXTURE3D;
-		header.flags |= TINYDDS_DDSD_DEPTH;
+		header.flags |= TINYDDS_DDSD_DEPTH | TINYDDS_DDSD_HEIGHT | TINYDDS_DDSD_WIDTH;
 		header.caps2 |= TINYDDS_DDSCAPS2_VOLUME;
 	}
 	else if(height > 1) {
 		headerDX10.resourceDimension = TINYDDS_D3D10_RESOURCE_DIMENSION_TEXTURE2D;
-		header.flags |= TINYDDS_DDSD_HEIGHT;
+		header.flags |= TINYDDS_DDSD_HEIGHT | TINYDDS_DDSD_WIDTH;
 	}
 	else if(width > 1) {
 		headerDX10.resourceDimension = TINYDDS_D3D10_RESOURCE_DIMENSION_TEXTURE1D;
@@ -2021,12 +2021,20 @@ bool TinyDDS_WriteImage(TinyDDS_WriteCallbacks const *callbacks,
 		header.caps2 |= TINYDDS_DDSCAPS2_CUBEMAP | TINYDDS_DDSCAPS2_CUBEMAP_ALL;
 	}
 
-	// unclear whether we need to save this or exactly what it should be...
-	header.pitchOrLinearSize = 0;
+	if(TinyDDS_IsCompressed(format)) {
+		header.pitchOrLinearSize = width * height * TinyDDS_FormatSize(format) / 16;
+		header.flags |= TINYDDS_DDSD_LINEARSIZE;
+	}
+	else {
+		header.pitchOrLinearSize = width * height * TinyDDS_FormatSize(format);
+		header.flags |= TINYDDS_DDSD_PITCH;
+	}
 	if(preferDx10Format && headerDX10.DXGIFormat != TIF_DXGI_FORMAT_UNKNOWN) {
 		header.formatFlags = TINYDDS_DDPF_FOURCC;
 		header.formatFourCC = TINYDDS_MAKE_RIFFCODE('D','X','1','0');
 	}
+	if(header.formatFourCC == TINYDDS_MAKE_RIFFCODE('D', 'X', '1', '0') && headerDX10.arraySize == 0)
+		headerDX10.arraySize = 1;
 
 	// now write
 	callbacks->write(user, &header, sizeof(TinyDDS_Header));
